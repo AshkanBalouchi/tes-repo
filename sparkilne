@@ -1,0 +1,79 @@
+import base64
+import requests
+import numpy as np
+import pandas as pd
+from time import sleep
+from itertools import chain
+from cStringIO import StringIO
+from datetime import timedelta, date
+from IPython.display import display, HTML
+
+%pylab inline
+
+# Turn off the max column width so the HTML 
+# image tags don't get truncated 
+pd.set_option('display.max_colwidth', -1)
+
+# Turning off the max column will display all the data in
+# our arrays so limit the number of element to display
+pd.set_option('display.max_seq_items', 2)
+
+def sparkline(data, figsize=(3, 0.625), **kwags):
+    """
+    Returns a HTML image tag containing a base64 encoded sparkline style plot
+    """
+    #data = list(data)
+    
+    z=1
+    mu = 0
+    variance = 1
+    sigma = math.sqrt(variance)
+    x = np.linspace(mu-3*variance,mu+3*variance, 100)
+    
+    fig, ax = plt.subplots(1, 1, figsize=figsize, **kwags)
+    ax.plot(data)
+    ax.plot(x,mlab.normpdf(x, mu, sigma),color='k',lw=1)
+    xposition = [1, -1]
+    for xc in xposition:
+        ax.axvline(x=xc, color='k',lw=1, linestyle='dotted')
+    xposition = [2, -2]
+    for xc in xposition:
+        ax.axvline(x=xc, color='k', lw = 0.5 , linestyle='dotted')
+    if abs(data) < 1 :
+        ax.axvline(x=data, color='g', lw = 1.5)
+    else : 
+        ax.axvline(x=data, color='r', lw = 1.5)
+
+
+    for k,v in ax.spines.items():
+        v.set_visible(False)
+    ax.set_xticks([])
+    ax.set_yticks([])    
+    plt.ylim([0,0.45])
+
+    #plt.plot(len(data) - 1, data[len(data) - 1], 'r.')
+
+    #ax.fill_between(range(len(data)), data, len(data)*[min(data)], alpha=0.1)
+    
+    img = StringIO()
+    plt.savefig(img, transparent=True)
+    img.seek(0)
+    plt.close()
+    return '<img src="data:image/png;base64,{}"/>'.format(base64.b64encode(img.read()))
+    
+data = [
+    ('rand',        0.5), 
+    ('randn',       0.2), 
+    ('beta',        0.3),
+    ('binomial',    1.2),
+    ('exponential', -0.7),
+    ('geometric',   -1.3),
+    ('laplace',     0.9)
+]
+spark = pd.DataFrame(data, columns=['func', 'data'])
+
+spark['sparklines'] = spark.data.map(sparkline)
+
+# _repr_html_ escapes HTML so manually handle the rendering
+x = HTML(spark[['data','sparklines']].to_html(escape=False))
+HTML(spark.to_html(escape=False))
